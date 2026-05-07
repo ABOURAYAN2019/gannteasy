@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import html2canvas from 'html2canvas';
 import './App.css';
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -41,7 +42,12 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [hoveredTask, setHoveredTask] = useState(null);
   
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskStart, setNewTaskStart] = useState('');
+  const [newTaskEnd, setNewTaskEnd] = useState('');
+
   const fileInputRef = useRef(null);
+  const chartRef = useRef(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -69,6 +75,53 @@ export default function App() {
       end: t.end.getTime()
     }))));
   }, [tasks]);
+
+  // Handle Add Task
+  const handleAddTask = (e) => {
+    e.preventDefault();
+    if (!newTaskName || !newTaskStart || !newTaskEnd) return;
+
+    const start = new Date(newTaskStart);
+    const end = new Date(newTaskEnd);
+
+    if (end < start) {
+      alert("La date de fin doit être après la date de début.");
+      return;
+    }
+
+    const newTask = {
+      id: `task-${Date.now()}`,
+      name: newTaskName,
+      start: start,
+      end: end,
+      originalStart: formatDMY(start),
+      originalEnd: formatDMY(end)
+    };
+
+    setTasks([...tasks, newTask]);
+    setNewTaskName('');
+    setNewTaskStart('');
+    setNewTaskEnd('');
+  };
+
+  // Handle Export Image
+  const handleExportImage = async () => {
+    if (!chartRef.current) return;
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+      });
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `gantt-chart-${formatDMY(new Date()).replace(/\//g, '-')}.png`;
+      link.click();
+    } catch (error) {
+      console.error("Erreur lors de l'exportation de l'image:", error);
+      alert("Une erreur est survenue lors de l'exportation.");
+    }
+  };
 
   // Handle CSV Import
   const handleFileUpload = (e) => {
@@ -227,7 +280,16 @@ export default function App() {
           <p className="text-sm text-slate-500 font-medium ml-10">Smart Gantt Chart Generator</p>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          {tasks.length > 0 && (
+            <button 
+              onClick={handleExportImage}
+              className="bg-white border border-[#007A3D] text-[#007A3D] hover:bg-slate-50 px-5 py-2.5 rounded-lg font-semibold shadow-sm transition-all flex items-center gap-2 transform active:scale-95"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Exporter PNG
+            </button>
+          )}
           <input 
             type="file" 
             accept=".csv" 
@@ -243,9 +305,55 @@ export default function App() {
             Importer CSV
           </button>
           {importError && (
-            <p className="text-red-500 text-xs font-semibold bg-red-50 px-2 py-1 rounded border border-red-200">{importError}</p>
+            <div className="w-full sm:w-auto">
+              <p className="text-red-500 text-xs font-semibold bg-red-50 px-2 py-1 rounded border border-red-200 mt-2 sm:mt-0">{importError}</p>
+            </div>
           )}
         </div>
+      </div>
+
+      {/* Add Task Form */}
+      <div className="w-full max-w-[1400px] px-4 md:px-8 mb-6">
+        <form onSubmit={handleAddTask} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex flex-col flex-grow w-full md:w-auto">
+            <label className="text-xs font-semibold text-slate-500 mb-1">Nom de la tâche</label>
+            <input 
+              type="text" 
+              value={newTaskName} 
+              onChange={(e) => setNewTaskName(e.target.value)} 
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D]"
+              placeholder="Ex: Phase de test..."
+              required
+            />
+          </div>
+          <div className="flex flex-col w-full md:w-auto">
+            <label className="text-xs font-semibold text-slate-500 mb-1">Date de début</label>
+            <input 
+              type="date" 
+              value={newTaskStart} 
+              onChange={(e) => setNewTaskStart(e.target.value)} 
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D]"
+              required
+            />
+          </div>
+          <div className="flex flex-col w-full md:w-auto">
+            <label className="text-xs font-semibold text-slate-500 mb-1">Date de fin</label>
+            <input 
+              type="date" 
+              value={newTaskEnd} 
+              onChange={(e) => setNewTaskEnd(e.target.value)} 
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D]"
+              required
+            />
+          </div>
+          <button 
+            type="submit" 
+            className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2 rounded-lg font-semibold shadow-md transition-all flex items-center justify-center gap-2 transform active:scale-95 text-sm h-[38px] w-full md:w-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+            Ajouter
+          </button>
+        </form>
       </div>
 
       {/* Main Content Area */}
@@ -265,7 +373,7 @@ export default function App() {
           <div className="flex flex-col lg:flex-row gap-6 relative">
             
             {/* Chart Container */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-grow flex flex-col">
+            <div ref={chartRef} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-grow flex flex-col relative z-0">
               
               {/* Header inside Chart container */}
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
