@@ -34,6 +34,20 @@ function formatTick(date) {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
+function formatYMD(date) {
+  if (!date) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseYMD(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('-');
+  return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+}
+
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -81,8 +95,8 @@ export default function App() {
     e.preventDefault();
     if (!newTaskName || !newTaskStart || !newTaskEnd) return;
 
-    const start = new Date(newTaskStart);
-    const end = new Date(newTaskEnd);
+    const start = parseYMD(newTaskStart);
+    const end = parseYMD(newTaskEnd);
 
     if (end < start) {
       alert("La date de fin doit être après la date de début.");
@@ -387,7 +401,7 @@ export default function App() {
               </div>
 
               {/* Flex wrapper for labels + chart area */}
-              <div className="flex w-full relative">
+              <div className="flex w-full relative pb-8">
                 
                 {/* Left Labels Column - Auto fit to longest name, fixed on mobile */}
                 <div className="w-auto flex-shrink-0 bg-white border-r border-slate-200 z-10 sticky left-0 shadow-[4px_0_12px_rgba(0,0,0,0.02)]">
@@ -451,10 +465,6 @@ export default function App() {
                         const pos = getPositionStyles(t.start, t.end, chartData.minStart, chartData.totalMs);
                         const days = durationDays(t.start, t.end);
                         const isSelected = selectedTask?.id === t.id;
-                        
-                        // Parse float to determine logic for narrow bars
-                        const widthVal = parseFloat(pos.width);
-                        const isNarrow = widthVal < 10; 
 
                         return (
                           <div 
@@ -477,22 +487,15 @@ export default function App() {
                                 {/* Interactive hit area expansion */}
                                 <div className="absolute inset-x-0 -inset-y-2"></div>
                                 
-                                {/* Label rendering strategy based on bar width */}
-                                {!isNarrow ? (
-                                  // Centered below bar
-                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 whitespace-nowrap opacity-0 group-hover:opacity-100 lg:opacity-100 transition-opacity pointer-events-none">
-                                    <span className="text-[10px] font-bold text-slate-600 bg-white/90 px-1.5 py-0.5 rounded shadow-sm border border-slate-100">
-                                      {formatDMY(t.start)} → {formatDMY(t.end)} ({days}j)
-                                    </span>
-                                  </div>
-                                ) : (
-                                  // Shifted to the right of the bar
-                                  <div className="absolute top-1/2 -right-2 transform translate-x-full -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 lg:opacity-100 transition-opacity pointer-events-none">
-                                    <span className="text-[10px] font-bold text-slate-600 bg-white/90 px-1.5 py-0.5 rounded shadow-sm border border-slate-100">
-                                      {formatDMY(t.start)} → {formatDMY(t.end)} ({days}j)
-                                    </span>
-                                  </div>
-                                )}
+                                {/* Dates inside the bar */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 overflow-visible">
+                                  <span 
+                                    className="text-[10px] font-bold text-white whitespace-nowrap tracking-wide"
+                                    style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.6)' }}
+                                  >
+                                    {formatDMY(t.start)} → {formatDMY(t.end)} ({days}j)
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             
@@ -520,17 +523,65 @@ export default function App() {
                   <svg className="w-6 h-6 text-[#007A3D]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                 </div>
                 
-                <h3 className="text-xl font-bold text-slate-800 mb-6 pr-6 leading-tight">{selectedTask.name}</h3>
+                <div className="mb-5 pr-6">
+                  <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Nom de la tâche</label>
+                  <input 
+                    type="text" 
+                    value={selectedTask.name}
+                    onChange={(e) => {
+                      const updated = { ...selectedTask, name: e.target.value };
+                      setTasks(tasks.map(t => t.id === updated.id ? updated : t));
+                      setSelectedTask(updated);
+                    }}
+                    className="w-full font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D] transition-colors"
+                  />
+                </div>
                 
                 <div className="space-y-4">
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-center justify-between">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col gap-1.5">
                     <span className="text-xs font-bold text-slate-500 uppercase">Début</span>
-                    <span className="text-sm font-semibold text-slate-800">{formatDMY(selectedTask.start)}</span>
+                    <input 
+                      type="date"
+                      value={formatYMD(selectedTask.start)}
+                      onChange={(e) => {
+                        const newStart = parseYMD(e.target.value);
+                        if (newStart && !isNaN(newStart.getTime())) {
+                          const newEnd = selectedTask.end < newStart ? newStart : selectedTask.end;
+                          const updated = { 
+                            ...selectedTask, 
+                            start: newStart, 
+                            end: newEnd,
+                            originalStart: formatDMY(newStart),
+                            originalEnd: formatDMY(newEnd)
+                          };
+                          setTasks(tasks.map(t => t.id === updated.id ? updated : t));
+                          setSelectedTask(updated);
+                        }
+                      }}
+                      className="w-full text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D] transition-colors"
+                    />
                   </div>
                   
-                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex items-center justify-between">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col gap-1.5">
                     <span className="text-xs font-bold text-slate-500 uppercase">Fin</span>
-                    <span className="text-sm font-semibold text-slate-800">{formatDMY(selectedTask.end)}</span>
+                    <input 
+                      type="date"
+                      value={formatYMD(selectedTask.end)}
+                      min={formatYMD(selectedTask.start)}
+                      onChange={(e) => {
+                        const newEnd = parseYMD(e.target.value);
+                        if (newEnd && !isNaN(newEnd.getTime())) {
+                          const updated = { 
+                            ...selectedTask, 
+                            end: newEnd,
+                            originalEnd: formatDMY(newEnd)
+                          };
+                          setTasks(tasks.map(t => t.id === updated.id ? updated : t));
+                          setSelectedTask(updated);
+                        }
+                      }}
+                      className="w-full text-sm font-semibold text-slate-800 bg-white border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-[#007A3D] focus:ring-1 focus:ring-[#007A3D] transition-colors"
+                    />
                   </div>
                   
                   <div className="bg-[#E6F4ED] p-3 rounded-lg border border-[#cceadc] flex items-center justify-between">
