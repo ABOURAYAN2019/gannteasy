@@ -31,7 +31,9 @@ function durationDays(start, end) {
 }
 
 function formatTick(date) {
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}`;
 }
 
 function formatYMD(date) {
@@ -211,7 +213,8 @@ export default function App() {
     const starts = tasks.map(t => t.start.getTime());
     const ends = tasks.map(t => Math.max(t.start.getTime(), t.end.getTime())); // Handle same day
 
-    let minStart = Math.min(...starts);
+    const projectStart = Math.min(...starts);
+    let minStart = projectStart;
     let maxEnd = Math.max(...ends);
 
     // Padding (1 day on each side)
@@ -224,11 +227,9 @@ export default function App() {
 
     // Dynamic Tick Interval
     let tickIntervalDays = 1;
-    if (totalDays > 30) tickIntervalDays = 7;
-    else if (totalDays > 10) tickIntervalDays = 3;
-
-    // Responsive: On smaller screens, we might want to scale up the tick interval if not scrolling
-    // but the requirement says mobile has horizontal scroll. 
+    if (totalDays > 45) tickIntervalDays = 7;
+    else if (totalDays > 20) tickIntervalDays = 3;
+    else if (totalDays > 10) tickIntervalDays = 2;
 
     const ticks = [];
     for (let i = 0; i <= totalDays; i += tickIntervalDays) {
