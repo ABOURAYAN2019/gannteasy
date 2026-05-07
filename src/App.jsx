@@ -405,9 +405,9 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Right Chart Area - Scrollable horizontally on small screens */}
-                <div className="flex-grow overflow-x-auto">
-                  <div className="min-w-[700px] relative">
+                {/* Right Chart Area - Adapts to screen size */}
+                <div className="flex-grow overflow-hidden">
+                  <div className="w-full relative">
                     
                     {/* Time Header */}
                     <div className="h-10 border-b border-slate-200 bg-slate-50 relative">
